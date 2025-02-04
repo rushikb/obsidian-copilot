@@ -20,8 +20,8 @@ import {
   RefreshCcw,
   TriangleAlert,
 } from "lucide-react";
-import { Notice, TFile } from "obsidian";
-import React, { forwardRef, memo, useEffect, useState } from "react";
+import { HoverParent, Notice, TFile } from "obsidian";
+import React, { forwardRef, memo, useEffect, useRef, useState } from "react";
 
 function useRelevantNotes(refresher: number) {
   const [relevantNotes, setRelevantNotes] = useState<RelevantNoteEntry[]>([]);
@@ -69,6 +69,32 @@ const ExplainerBadge = forwardRef<HTMLDivElement, { children: React.ReactNode }>
 );
 
 ExplainerBadge.displayName = "ExplainerBadge";
+function useHoverPreview() {
+  const hoverRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const element = hoverRef.current;
+    if (!element) return;
+
+    // Add hover parent class for Obsidian hover
+    element.addClass('has-hover-preview');
+    (element as any).setAttribution = () => {}; // Required by Obsidian
+    app.workspace.trigger('hover-link', {
+      event: 'mouseover',
+      source: HoverParent.preview,
+      hoverParent: element,
+      targetEl: element,
+      linktext: element.dataset.path,
+    });
+
+    return () => {
+      element.removeClass('has-hover-preview');
+    };
+  }, []);
+
+  return hoverRef;
+}
+
 function inSameFolder(path1: string, path2: string) {
   const folder1 = path1.split("/").slice(0, -1).join("/");
   const folder2 = path2.split("/").slice(0, -1).join("/");
@@ -119,6 +145,8 @@ function RelevantNote({
     <div className="flex gap-2 p-2 justify-between rounded-md border border-border border-solid">
       <div className="flex flex-col gap-2 flex-1 overflow-hidden">
         <a
+          ref={useHoverPreview() as any}
+          data-path={note.document.path}
           onClick={onNavigateToNote}
           className="text-sm text-normal font-bold text-ellipsis overflow-hidden whitespace-nowrap w-full"
         >
@@ -280,6 +308,8 @@ export const RelevantNotes = memo(
                     variant="outline"
                     key={note.document.path}
                     className="text-xs max-w-40 text-muted hover:cursor-pointer hover:bg-interactive-hover"
+                    ref={useHoverPreview() as any}
+                    data-path={note.document.path}
                   >
                     <span className="text-ellipsis overflow-hidden whitespace-nowrap">
                       {note.document.title}
